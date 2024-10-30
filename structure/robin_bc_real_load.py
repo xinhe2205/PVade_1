@@ -36,7 +36,7 @@ block_thick = r_out
 block_length = 0.1*panel_length
 block_width = block_length
 
-stow_angle = np.pi/6 # theta_i
+stow_angle = np.pi/9 # theta_i
 
 l_0_prime = ((panel_width/2)**2+block_thick**2)**0.5
 
@@ -117,17 +117,23 @@ dx = ufl.Measure("dx", domain=mesh, subdomain_data=cell_tags)
 top_coor_load = np.loadtxt('top_surface_load.txt')
 bot_coor_load = np.loadtxt('bot_surface_load.txt')
 
-aa = top_coor_load[:,1]/24.2*20.0
-bb = top_coor_load[:,0]/4.1*4.0
+
+
+aa = (top_coor_load[:,1])/24.2*20.0 #-10 to 10
+bb = (top_coor_load[:,0])/4.1*4.0 # -2 to 2
+cc = top_coor_load[:,2]+0.05+block_thick  # block_thick to block_thick+panel_thick
 
 top_coor_load[:,0] = aa
 top_coor_load[:,1] = bb
+top_coor_load[:,2] = cc
 
-aaa = bot_coor_load[:,1]/24.2*20.0
-bbb = bot_coor_load[:,0]/4.1*4.0
+aaa = (bot_coor_load[:,1])/24.2*20.0
+bbb = (bot_coor_load[:,0])/4.1*4.0
+ccc = bot_coor_load[:,2]+0.05 + block_thick
 
 bot_coor_load[:,0] = aaa
 bot_coor_load[:,1] = bbb    # flip x and y, in pvade the x axis is the y axis in this code
+bot_coor_load[:,2] = ccc
 
 rotate_coor_x_top = top_coor_load[:,0]
 rotate_coor_y_top = np.cos(stow_angle)*top_coor_load[:,1]-np.sin(stow_angle)*top_coor_load[:,2]
@@ -140,12 +146,36 @@ rotate_coor_z_bot = np.sin(stow_angle)*bot_coor_load[:,1]+np.cos(stow_angle)*bot
 top_coor = np.zeros((np.shape(rotate_coor_x_top)[0], 3))
 bot_coor = np.zeros((np.shape(rotate_coor_x_bot)[0], 3))
 
-top_coor[:,0] = rotate_coor_x_top
+top_coor[:,0] = rotate_coor_x_top + 10
 top_coor[:,1] = rotate_coor_y_top
 top_coor[:,2] = rotate_coor_z_top
-bot_coor[:,0] = rotate_coor_x_bot
+bot_coor[:,0] = rotate_coor_x_bot + 10
 bot_coor[:,1] = rotate_coor_y_bot
 bot_coor[:,2] = rotate_coor_z_bot
+
+# print(np.max(top_coor[:,0]))
+# print(np.min(top_coor[:,0]))
+# print(np.max(bot_coor[:,0]))
+# print(np.min(bot_coor[:,0]))
+
+# print(np.max(top_coor[:,1]))
+# print(np.min(top_coor[:,1]))
+# print(np.max(bot_coor[:,1]))
+# print(np.min(bot_coor[:,1]))
+
+# print(np.max(top_coor[:,2]))
+# print(np.min(top_coor[:,2]))
+# print(np.max(bot_coor[:,2]))
+# print(np.min(bot_coor[:,2]))
+
+# print(np.max(mesh.geometry.x[:,0]))
+# print(np.min(mesh.geometry.x[:,0]))
+# print(np.max(mesh.geometry.x[:,1]))
+# print(np.min(mesh.geometry.x[:,1]))
+# print(np.max(mesh.geometry.x[:,2]))
+# print(np.min(mesh.geometry.x[:,2]))
+# exit()
+
 
 
 
@@ -311,7 +341,7 @@ for j in range(N):
 
 
 
-x_panel = np.arange(1,11)*panel_length# location of panles
+x_panel = np.arange(10)*panel_length + 1# location of panles
 
 T_p1 = []
 T_p2 = []
@@ -322,29 +352,31 @@ K = []
 
 for i in range(N):
 
-    T_p1.append(dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(spatial_Y_coords+block_thick*np.sin(stow_angle), function_tz[f"tz_panel_{j}"])*ds_external(5))) \
-        + dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(spatial_Y_coords+(block_thick+panel_thick)*np.sin(stow_angle), function_tz[f"tz_panel_{j}"])*ds_external(7))))
+    T_p1.append(dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(spatial_Y_coords+block_thick*np.sin(stow_angle), function_tz[f"tz_panel_{i}"])*ds_external(5))) \
+        + dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(spatial_Y_coords+(block_thick+panel_thick)*np.sin(stow_angle), function_tz[f"tz_panel_{i}"])*ds_external(7))))
     
-    T_p2.append(-dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(block_thick*np.sin(stow_angle), function_tz[f"tz_panel_{j}"])*ds_external(5))) \
-        - dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner((block_thick+panel_thick)*np.sin(stow_angle), function_tz[f"tz_panel_{j}"])*ds_external(7))))
+    T_p2.append(-dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(block_thick*np.sin(stow_angle), function_tz[f"tz_panel_{i}"])*ds_external(5))) \
+        - dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner((block_thick+panel_thick)*np.sin(stow_angle), function_tz[f"tz_panel_{i}"])*ds_external(7))))
 
-    T_q1.append(-dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(spatial_Z_coords-block_thick*np.cos(stow_angle), function_ty[f"ty_panel_{j}"])*ds_external(5))) \
-        - dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(spatial_Z_coords-(block_thick+panel_thick)*np.cos(stow_angle), function_ty[f"ty_panel_{j}"])*ds_external(7))))             # torque applied to panel
+    T_q1.append(-dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(spatial_Z_coords-block_thick*np.cos(stow_angle), function_ty[f"ty_panel_{i}"])*ds_external(5))) \
+        - dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(spatial_Z_coords-(block_thick+panel_thick)*np.cos(stow_angle), function_ty[f"ty_panel_{i}"])*ds_external(7))))             # torque applied to panel
 
-    T_q2.append(-dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(block_thick*np.cos(stow_angle), function_ty[f"ty_panel_{j}"])*ds_external(5))) \
-        - dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner((block_thick+panel_thick)*np.cos(stow_angle), function_ty[f"ty_panel_{j}"])*ds_external(7))))             # torque applied to panel
+    T_q2.append(-dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner(block_thick*np.cos(stow_angle), function_ty[f"ty_panel_{i}"])*ds_external(5))) \
+        - dolfinx.fem.assemble_scalar(dolfinx.fem.form(ufl.inner((block_thick+panel_thick)*np.cos(stow_angle), function_ty[f"ty_panel_{i}"])*ds_external(7))))             # torque applied to panel
 
-
+# print(np.asarray(T_p1)+np.asarray(T_p2)+np.asarray(T_q1)+np.asarray(T_q2))
+# exit()
 
 for i in range(N):
     phi_i = 0
     for k in range(i, N):
-        phi_i = x_panel[i]/G/Ip*(T_p1[k] + T_p2[k] + T_q1[k] + T_q2[k])
+        phi_i = x_panel[i]/G/Ip*(T_p1[k] + T_p2[k] + T_q1[k] + T_q2[k]) # on undeformed configuration
     for j in range(i):
         phi_i = phi_i + (T_p1[j] + T_p2[j] + T_q1[j] + T_q2[j])*x_panel[j]/G/Ip
     phi.append(phi_i)
 
     K_i = 12*((T_p1[i]+T_q2[i])*(np.cos(stow_angle+phi_i)/np.cos(stow_angle)) + (T_q1[i]+T_p2[i]) *(np.sin(stow_angle+phi_i)/np.sin(stow_angle)))/((block_length)**3)/np.cos(stow_angle+phi_i)/(np.sin(stow_angle+phi_i)-np.sin(stow_angle))/block_width
+
     K.append(K_i)
 
 # for i in range(N):
@@ -377,7 +409,7 @@ def right_bottom_line(x):
     return np.logical_and(np.isclose(x[1], panel_width/2*np.cos(stow_angle)-block_thick*np.sin(stow_angle)), np.isclose(x[2], panel_width/2*np.sin(stow_angle)+block_thick*np.cos(stow_angle)))
 
 def left_bottom_line(x):
-    return np.logical_and(np.isclose(x[1], -panel_width/2*np.cos(stow_angle)+block_thick*np.sin(stow_angle)), np.isclose(x[2], -panel_width/2*np.sin(stow_angle)-block_thick*np.cos(stow_angle)))
+    return np.logical_and(np.isclose(x[1], -panel_width/2*np.cos(stow_angle)-block_thick*np.sin(stow_angle)), np.isclose(x[2], -panel_width/2*np.sin(stow_angle)+block_thick*np.cos(stow_angle)))
 
 right_bottom_line_index = dolfinx.mesh.locate_entities_boundary(mesh, 1, right_bottom_line)
 left_bottom_line_index = dolfinx.mesh.locate_entities_boundary(mesh, 1, left_bottom_line)
@@ -451,6 +483,13 @@ plt.grid()
 plt.legend()
 plt.xlabel('Panel ID')
 plt.ylabel('Rotation Angle (degree)')
+plt.show()
+
+plt.plot(range(1,1+N), (np.asarray(phi_predict)-np.asarray(phi))/np.asarray(phi), 'bo')
+plt.grid()
+plt.legend()
+plt.xlabel('Panel ID')
+plt.ylabel('error')
 plt.show()
 
 
